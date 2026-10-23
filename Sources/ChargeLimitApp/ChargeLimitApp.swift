@@ -26,8 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.service = service
         self.menuBarManager = menuBarManager
         
-        // Set activation policy to regular (show in Dock)
-        NSApp.setActivationPolicy(.regular)
+        // Set activation policy to accessory (menu bar only, NO dock icon)
+        NSApp.setActivationPolicy(.accessory)
         
         // Setup menu bar settings callback
         menuBarManager.onOpenSettings = { [weak self] in
@@ -48,8 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         
-        // Create main window if needed
-        showMainWindow()
+        // DO NOT create main window at launch - only when user clicks "Открыть"
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
