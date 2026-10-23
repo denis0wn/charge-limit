@@ -1,0 +1,19 @@
+{
+  "" : {
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/ChargeLimitHelper-primary.dia",
+    "emit-module-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/ChargeLimitHelper-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/ChargeLimitHelper-primary-emit-module.dia",
+    "pch" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/ChargeLimitHelper-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/ChargeLimitHelper-primary.swiftdeps"
+  },
+  "/Users/denissmoliakov/projects/ChargeLimitApp/Sources/ChargeLimitHelper/main.swift" : {
+    "const-values" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/main.swiftconstvalues",
+    "dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/main.d",
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/main.dia",
+    "index-unit-output-path" : "/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/main.o",
+    "llvm-bc" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/main.bc",
+    "object" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/main.o",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/main.swiftdeps",
+    "swiftmodule" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitHelper-p.build/Objects-normal/arm64/main~partial.swiftmodule"
+  }
+}

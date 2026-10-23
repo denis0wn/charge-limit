@@ -1,0 +1,79 @@
+{
+  "" : {
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp-primary.dia",
+    "emit-module-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp-primary-emit-module.dia",
+    "pch" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp-primary.swiftdeps"
+  },
+  "/Users/denissmoliakov/projects/ChargeLimitApp/Sources/ChargeLimitApp/ChargeLimitApp.swift" : {
+    "const-values" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.swiftconstvalues",
+    "dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.d",
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.dia",
+    "index-unit-output-path" : "/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.o",
+    "llvm-bc" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.bc",
+    "object" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.o",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.swiftdeps",
+    "swiftmodule" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp~partial.swiftmodule"
+  },
+  "/Users/denissmoliakov/projects/ChargeLimitApp/Sources/ChargeLimitApp/Services/ChargeLimitService.swift" : {
+    "const-values" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitService.swiftconstvalues",
+    "dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitService.d",
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitService.dia",
+    "index-unit-output-path" : "/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitService.o",
+    "llvm-bc" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitService.bc",
+    "object" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitService.o",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitService.swiftdeps",
+    "swiftmodule" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitService~partial.swiftmodule"
+  },
+  "/Users/denissmoliakov/projects/ChargeLimitApp/Sources/ChargeLimitApp/Views/BatteryView.swift" : {
+    "const-values" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/BatteryView.swiftconstvalues",
+    "dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/BatteryView.d",
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/BatteryView.dia",
+    "index-unit-output-path" : "/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/BatteryView.o",
+    "llvm-bc" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/BatteryView.bc",
+    "object" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/BatteryView.o",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/BatteryView.swiftdeps",
+    "swiftmodule" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/BatteryView~partial.swiftmodule"
+  },
+  "/Users/denissmoliakov/projects/ChargeLimitApp/Sources/ChargeLimitApp/Views/ContentView.swift" : {
+    "const-values" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ContentView.dia",
+    "index-unit-output-path" : "/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/ContentView~partial.swiftmodule"
+  },
+  "/Users/denissmoliakov/projects/ChargeLimitApp/Sources/ChargeLimitApp/Views/MenuBarView.swift" : {
+    "const-values" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/MenuBarView.swiftconstvalues",
+    "dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/MenuBarView.d",
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/MenuBarView.dia",
+    "index-unit-output-path" : "/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/MenuBarView.o",
+    "llvm-bc" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/MenuBarView.bc",
+    "object" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/MenuBarView.o",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/MenuBarView.swiftdeps",
+    "swiftmodule" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/MenuBarView~partial.swiftmodule"
+  },
+  "/Users/denissmoliakov/projects/ChargeLimitApp/Sources/ChargeLimitApp/Views/SettingsView.swift" : {
+    "const-values" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SettingsView.swiftconstvalues",
+    "dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SettingsView.d",
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SettingsView.dia",
+    "index-unit-output-path" : "/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SettingsView.o",
+    "llvm-bc" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SettingsView.bc",
+    "object" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SettingsView.o",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SettingsView.swiftdeps",
+    "swiftmodule" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SettingsView~partial.swiftmodule"
+  },
+  "/Users/denissmoliakov/projects/ChargeLimitApp/Sources/ChargeLimitApp/Views/SharedComponents.swift" : {
+    "const-values" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SharedComponents.swiftconstvalues",
+    "dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SharedComponents.d",
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SharedComponents.dia",
+    "index-unit-output-path" : "/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SharedComponents.o",
+    "llvm-bc" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SharedComponents.bc",
+    "object" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SharedComponents.o",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SharedComponents.swiftdeps",
+    "swiftmodule" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Debug/ChargeLimitApp-p.build/Objects-normal/arm64/SharedComponents~partial.swiftmodule"
+  }
+}

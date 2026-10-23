@@ -1,0 +1,16 @@
+{
+  "" : {
+    "const-values" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitService-t.build/Objects-normal/arm64/ChargeLimitService-primary.swiftconstvalues",
+    "dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitService-t.build/Objects-normal/arm64/ChargeLimitService-primary.d",
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitService-t.build/Objects-normal/arm64/ChargeLimitService-primary.dia",
+    "emit-module-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitService-t.build/Objects-normal/arm64/ChargeLimitService-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitService-t.build/Objects-normal/arm64/ChargeLimitService-primary-emit-module.dia",
+    "pch" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitService-t.build/Objects-normal/arm64/ChargeLimitService-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitService-t.build/Objects-normal/arm64/ChargeLimitService-primary.swiftdeps"
+  },
+  "/Users/denissmoliakov/projects/ChargeLimitApp/Sources/ChargeLimitService/ChargeLimitService.swift" : {
+    "index-unit-output-path" : "/ChargeLimitApp.build/Release/ChargeLimitService-t.build/Objects-normal/arm64/ChargeLimitService.o",
+    "llvm-bc" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitService-t.build/Objects-normal/arm64/ChargeLimitService.bc",
+    "object" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitService-t.build/Objects-normal/arm64/ChargeLimitService.o"
+  }
+}

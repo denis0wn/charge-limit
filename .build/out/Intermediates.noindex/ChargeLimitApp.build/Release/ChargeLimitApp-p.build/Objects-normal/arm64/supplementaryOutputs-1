@@ -1,0 +1,11 @@
+{
+  "/Users/denissmoliakov/projects/ChargeLimitApp/Sources/ChargeLimitApp/ChargeLimitApp.swift" : {
+    "abi-baseline-json" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.abi.json",
+    "const-values" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp-primary.swiftconstvalues",
+    "dependencies" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp-primary.d",
+    "diagnostics" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp-primary.dia",
+    "swiftdoc" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.swiftdoc",
+    "swiftmodule" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.swiftmodule",
+    "swiftsourceinfo" : "/Users/denissmoliakov/projects/ChargeLimitApp/.build/out/Intermediates.noindex/ChargeLimitApp.build/Release/ChargeLimitApp-p.build/Objects-normal/arm64/ChargeLimitApp.swiftsourceinfo"
+  }
+}
