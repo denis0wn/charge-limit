@@ -42,6 +42,7 @@ final class MenuBarViewModel {
     }
     
     private func updateFromService() {
+        // Update selected limit from system (for display)
         selectedLimit = currentLimit
         
         let charge = currentChargeLevel
@@ -54,7 +55,7 @@ final class MenuBarViewModel {
             isCharging: charging,
             isLimited: limited,
             limitPercent: limited ? limit : nil,
-            size: .small,
+            size: .tiny,
             animated: true
         )
         
@@ -63,7 +64,7 @@ final class MenuBarViewModel {
             isCharging: charging,
             isLimited: limited,
             limitPercent: limited ? limit : nil,
-            size: .small,
+            size: .tiny,
             animated: false
         )
     }
@@ -81,7 +82,19 @@ final class MenuBarViewModel {
     
     var isCharging: Bool {
         let status = service.state?.batteryStatus ?? ""
-        return status.contains("AC attached") && !status.contains("discharging")
+        // On AC: "Now drawing from 'AC Power'"
+        // On Battery: "Now drawing from 'Battery Power'"
+        return status.contains("AC Power")
+    }
+    
+    var powerSourceText: String {
+        let status = service.state?.batteryStatus ?? ""
+        if status.contains("AC Power") {
+            return "От сети"
+        } else if status.contains("Battery Power") {
+            return "От батареи"
+        }
+        return "—"
     }
     
     var currentLimit: Int {
@@ -106,26 +119,6 @@ final class MenuBarViewModel {
     
     func setLimit(_ limit: Int) {
         selectedLimit = limit
-    }
-    
-    func toggleLimit(_ enabled: Bool) {
-        if !enabled {
-            Task {
-                do {
-                    try await service.disableLimit()
-                    await MainActor.run {
-                        selectedLimit = 100
-                        menuBarManager.updateIcon(enabled: false, limit: nil)
-                        NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .default)
-                    }
-                } catch {
-                    await MainActor.run {
-                        authError = error.localizedDescription
-                        showingAuthAlert = true
-                    }
-                }
-            }
-        }
     }
     
     func applyLimit() {
@@ -203,6 +196,7 @@ struct MenuBarView: View {
                 MenuBarHeaderSection(
                     isCharging: viewModel.isCharging,
                     chargeLevel: viewModel.currentChargeLevel,
+                    powerSource: viewModel.powerSourceText,
                     isLoading: viewModel.isLoading
                 )
                 
@@ -237,17 +231,17 @@ struct MenuBarView: View {
                                 )
                                 
                                 StatusPill(
-                                    text: viewModel.timeRemaining,
-                                    icon: "clock.fill",
-                                    color: .purple
+                                    text: viewModel.powerSourceText,
+                                    icon: viewModel.isCharging ? "powerplug" : "battery.100",
+                                    color: viewModel.isCharging ? .blue : .purple
                                 )
                             }
                         }
                         
-                        // Limit Control
+                        // Limit Control - ALWAYS VISIBLE
                         LimitControlSection(viewModel: viewModel)
                         
-                        // Quick Presets
+                        // Quick Presets - ALWAYS VISIBLE
                         QuickPresetsSection(viewModel: viewModel)
                         
                         // Action Buttons
@@ -303,65 +297,45 @@ struct MenuBarView: View {
     }
 }
 
-// MARK: - Limit Control Section
+// MARK: - Limit Control Section (ALWAYS VISIBLE)
 
 struct LimitControlSection: View {
     let viewModel: MenuBarViewModel
     
     var body: some View {
-        VStack(spacing: 12) {
-            // Toggle row
-            PremiumToggleRow(
-                icon: "slider.horizontal.3",
-                title: "Лимит заряда",
-                subtitle: "Остановить зарядку на заданном проценте",
-                isOn: viewModel.isLimitEnabled,
-                color: .blue,
-                onToggle: { viewModel.toggleLimit($0) }
-            )
-            
-            // Slider (when enabled)
-            if viewModel.isLimitEnabled {
-                VStack(spacing: 10) {
-                    HStack {
-                        Text("Максимальный заряд")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text("\(viewModel.selectedLimit)%")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(.blue)
-                            .contentTransition(.numericText())
-                    }
-                    
-                    CompactPremiumSlider(
-                        value: Double(viewModel.selectedLimit),
-                        range: 20...100,
-                        step: 5,
-                        activeColor: .blue,
-                        trackColor: Color.blue.opacity(0.15),
-                        onChange: { viewModel.setLimit(Int($0)) },
-                        dragState: viewModel.sliderDragState
-                    )
-                    .frame(height: 36)
-                }
-                .padding(16)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.blue.opacity(0.15), lineWidth: 1)
-                )
-                .transition(.asymmetric(
-                    insertion: .scale(scale: 0.95).combined(with: .opacity).combined(with: .offset(y: -8)),
-                    removal: .scale(scale: 0.95).combined(with: .opacity).combined(with: .offset(y: -8))
-                ))
+        VStack(spacing: 10) {
+            HStack {
+                Text("Максимальный заряд")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(viewModel.selectedLimit)%")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(.blue)
+                    .contentTransition(.numericText())
             }
+            
+            CompactPremiumSlider(
+                value: Double(viewModel.selectedLimit),
+                range: 20...100,
+                step: 5,
+                activeColor: .blue,
+                trackColor: Color.blue.opacity(0.15),
+                onChange: { viewModel.setLimit(Int($0)) },
+                dragState: viewModel.sliderDragState
+            )
+            .frame(height: 36)
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: viewModel.isLimitEnabled)
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.blue.opacity(0.15), lineWidth: 1)
+        )
     }
 }
 
-// MARK: - Quick Presets Section
+// MARK: - Quick Presets Section (ALWAYS VISIBLE)
 
 struct QuickPresetsSection: View {
     let viewModel: MenuBarViewModel
@@ -379,8 +353,8 @@ struct QuickPresetsSection: View {
                     ForEach(presets, id: \.self) { preset in
                         CompactPresetButton(
                             value: preset,
-                            isSelected: viewModel.isLimitEnabled && viewModel.currentLimit == preset,
-                            isEnabled: viewModel.isLimitEnabled,
+                            isSelected: viewModel.selectedLimit == preset,
+                            isEnabled: true,
                             action: { viewModel.setLimit(preset) },
                             pressState: viewModel.presetPressState
                         )
@@ -398,6 +372,7 @@ struct ActionButtonsSection: View {
     
     var body: some View {
         VStack(spacing: 10) {
+            // Apply button
             Button(action: viewModel.applyLimit) {
                 HStack(spacing: 8) {
                     if viewModel.isApplying {
@@ -413,8 +388,9 @@ struct ActionButtonsSection: View {
                 .padding(.vertical, 12)
             }
             .buttonStyle(PremiumButtonStyle(color: .blue))
-            .disabled(viewModel.isApplying || viewModel.selectedLimit < 20 || viewModel.selectedLimit > 100 || (!viewModel.isLimitEnabled && viewModel.selectedLimit == 100))
+            .disabled(viewModel.isApplying || viewModel.selectedLimit < 20 || viewModel.selectedLimit > 100)
             
+            // Disable button (only if limit is active)
             if viewModel.isLimitEnabled {
                 Button(action: viewModel.disableLimit) {
                     HStack(spacing: 8) {
@@ -463,5 +439,47 @@ struct ActionButtonsSection: View {
                 .disabled(viewModel.isLoading)
             }
         }
+    }
+}
+
+// MARK: - Header Section (Menu Bar)
+
+struct MenuBarHeaderSection: View {
+    let isCharging: Bool
+    let chargeLevel: Double
+    let powerSource: String
+    let isLoading: Bool
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(isCharging ? Color.yellow.opacity(0.2) : Color.blue.opacity(0.2))
+                    .frame(width: 32, height: 32)
+                
+                Image(systemName: isCharging ? "bolt.fill" : "battery.100")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(isCharging ? .yellow : .blue)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("ChargeLimit")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text("\(Int(chargeLevel))%  •  \(powerSource)")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.gray)
+            }
+            
+            Spacer()
+            
+            if isLoading {
+                ProgressView()
+                    .controlSize(.mini)
+                    .tint(.white)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }

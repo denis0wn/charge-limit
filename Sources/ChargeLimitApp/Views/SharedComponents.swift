@@ -899,47 +899,6 @@ struct TopBarView: View {
     }
 }
 
-// MARK: - Header Section (Menu Bar)
-
-struct MenuBarHeaderSection: View {
-    let isCharging: Bool
-    let chargeLevel: Double
-    let isLoading: Bool
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(isCharging ? Color.yellow.opacity(0.2) : Color.blue.opacity(0.2))
-                    .frame(width: 32, height: 32)
-                
-                Image(systemName: isCharging ? "bolt.fill" : "battery.100")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(isCharging ? .yellow : .blue)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("ChargeLimit")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                Text("\(Int(chargeLevel))%  \(isCharging ? "Заряжается" : "На батарее")")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(.gray)
-            }
-            
-            Spacer()
-            
-            if isLoading {
-                ProgressView()
-                    .controlSize(.mini)
-                    .tint(.white)
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-}
-
 // MARK: - Footer Section (Menu Bar)
 
 struct MenuBarFooterSection: View {
