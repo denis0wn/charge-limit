@@ -1,4 +1,0 @@
-Target dependency graph (2 targets)
-Target 'ChargeLimitApp-product' in project 'ChargeLimitApp'
-➜ Explicit dependency on target 'ChargeLimitService' in project 'ChargeLimitApp'
-Target 'ChargeLimitService' in project 'ChargeLimitApp' (no dependencies)

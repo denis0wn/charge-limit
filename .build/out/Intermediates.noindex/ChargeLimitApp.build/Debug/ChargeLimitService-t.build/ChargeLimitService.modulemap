@@ -1,4 +1,0 @@
-module ChargeLimitService {
-header "ChargeLimitService-Swift.h"
-export *
-}
