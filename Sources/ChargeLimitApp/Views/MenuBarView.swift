@@ -39,6 +39,14 @@ final class MenuBarViewModel {
                 self?.updateFromService()
             }
         }
+        
+        // Force initial refresh
+        Task {
+            await service.refresh()
+            await MainActor.run {
+                self.updateFromService()
+            }
+        }
     }
     
     private func updateFromService() {
@@ -70,28 +78,68 @@ final class MenuBarViewModel {
     }
     
     var currentChargeLevel: Double {
-        let status = service.state?.batteryStatus ?? ""
+        // Try service state first, fallback to direct pmset read
+        if let status = service.state?.batteryStatus, !status.isEmpty {
+            let pattern = #"(\d+)%"#
+            if let regex = try? NSRegularExpression(pattern: pattern),
+               let match = regex.firstMatch(in: status, range: NSRange(location: 0, length: status.utf16.count)),
+               let range = Range(match.range(at: 1), in: status) {
+                return Double(status[range]) ?? 0
+            }
+        }
+        
+        // Fallback: read battery status directly via pmset (no admin needed)
+        let fallbackStatus = getFallbackBatteryStatus()
         let pattern = #"(\d+)%"#
         if let regex = try? NSRegularExpression(pattern: pattern),
-           let match = regex.firstMatch(in: status, range: NSRange(location: 0, length: status.utf16.count)),
-           let range = Range(match.range(at: 1), in: status) {
-            return Double(status[range]) ?? 0
+           let match = regex.firstMatch(in: fallbackStatus, range: NSRange(location: 0, length: fallbackStatus.utf16.count)),
+           let range = Range(match.range(at: 1), in: fallbackStatus) {
+            return Double(fallbackStatus[range]) ?? 0
         }
         return 0
     }
     
+    private func getFallbackBatteryStatus() -> String {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
+        task.arguments = ["-g", "batt"]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        } catch {
+            return ""
+        }
+    }
+    
     var isCharging: Bool {
-        let status = service.state?.batteryStatus ?? ""
-        // On AC: "Now drawing from 'AC Power'"
-        // On Battery: "Now drawing from 'Battery Power'"
-        return status.contains("AC Power")
+        // Try service state first, fallback to direct pmset read
+        if let status = service.state?.batteryStatus, !status.isEmpty {
+            return status.contains("AC Power") && !status.contains("discharging")
+        }
+        
+        // Fallback
+        let fallbackStatus = getFallbackBatteryStatus()
+        return fallbackStatus.contains("AC Power") && !fallbackStatus.contains("discharging")
     }
     
     var powerSourceText: String {
-        let status = service.state?.batteryStatus ?? ""
-        if status.contains("AC Power") {
+        // Try service state first, fallback to direct pmset read
+        if let status = service.state?.batteryStatus, !status.isEmpty {
+            if status.contains("AC Power") {
+                return "От сети"
+            } else if status.contains("Battery Power") {
+                return "От батареи"
+            }
+        }
+        
+        // Fallback
+        let fallbackStatus = getFallbackBatteryStatus()
+        if fallbackStatus.contains("AC Power") {
             return "От сети"
-        } else if status.contains("Battery Power") {
+        } else if fallbackStatus.contains("Battery Power") {
             return "От батареи"
         }
         return "—"

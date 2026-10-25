@@ -117,7 +117,7 @@ struct PremiumSlider: View {
                 .animation(.spring(response: 0.25, dampingFraction: 0.7), value: dragState.isDragging)
             }
             .contentShape(Rectangle())
-            .gesture(
+            .highPriorityGesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { gesture in
                         if !dragState.isDragging {
@@ -234,7 +234,7 @@ struct CompactPremiumSlider: View {
                 .animation(.spring(response: 0.2, dampingFraction: 0.7), value: dragState.isDragging)
             }
             .contentShape(Rectangle())
-            .gesture(
+            .highPriorityGesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { gesture in
                         dragState.isDragging = true

@@ -103,13 +103,73 @@ final class ContentViewModel {
     }
     
     var batteryHealth: String {
-        "Хорошее"
+        let status = service.state?.batteryStatus ?? ""
+        // Try to extract battery health from pmset output
+        if let range = status.range(of: #"Health:\s*(\w+)"#, options: .regularExpression) {
+            let health = String(status[range]).replacingOccurrences(of: "Health: ", with: "")
+            return health
+        }
+        // Fallback: try to get from ioreg
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/sbin/ioreg")
+        task.arguments = ["-r", "-c", "AppleSmartBattery", "-k", "MaxCapacity", "-k", "CurrentCapacity"]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        do {
+            try task.run()
+            task.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let output = String(data: data, encoding: .utf8) {
+                let lines = output.components(separatedBy: "\n")
+                var maxCap: Double = 0
+                var currentCap: Double = 0
+                for line in lines {
+                    if line.contains("MaxCapacity") {
+                        maxCap = Double(line.components(separatedBy: "=").last?.trimmingCharacters(in: .whitespaces) ?? "") ?? 0
+                    } else if line.contains("CurrentCapacity") {
+                        currentCap = Double(line.components(separatedBy: "=").last?.trimmingCharacters(in: .whitespaces) ?? "") ?? 0
+                    }
+                }
+                if maxCap > 0 {
+                    let healthPercent = Int((currentCap / maxCap) * 100)
+                    return "\(healthPercent)%"
+                }
+            }
+        } catch {
+            // Ignore
+        }
+        return "—"
     }
     
     var chargeWatts: String {
         let status = service.state?.batteryStatus ?? ""
+        // Try to extract wattage from pmset output
         if let range = status.range(of: #"(\d+\.?\d*)\s*W"#, options: .regularExpression) {
+            let watts = String(status[range]).replacingOccurrences(of: "W", with: "")
+            if let wattsValue = Double(watts) {
+                return String(format: "%.1f W", wattsValue)
+            }
             return String(status[range])
+        }
+        // Fallback: try ioreg
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/sbin/ioreg")
+        task.arguments = ["-r", "-c", "AppleSmartBattery", "-k", "ExternalChargeCapable", "-k", "AdapterInfo"]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        do {
+            try task.run()
+            task.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let output = String(data: data, encoding: .utf8) {
+                // Try to extract wattage from ioreg output
+                if let range = output.range(of: #"Watts\s*=\s*(\d+)"#, options: .regularExpression) {
+                    let watts = String(output[range]).replacingOccurrences(of: "Watts = ", with: "")
+                    return "\(watts) W"
+                }
+            }
+        } catch {
+            // Ignore
         }
         return "—"
     }
