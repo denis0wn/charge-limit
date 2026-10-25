@@ -3,6 +3,7 @@
 //
 // Core service for managing battery charge limits via XPC Helper
 // Uses ChargeLimitClient (XPC) for privileged operations
+// Falls back to osascript with admin privileges for local development
 // NO SwiftUI macros - uses manual observation for SPM compilation
 
 import Foundation
@@ -241,12 +242,52 @@ final class ChargeLimitService {
         
         do {
             try await client.setChargeLimit(Int(limit))
+            os_log(.info, log: logger, "Successfully set charge limit to %d%% via XPC", limit)
         } catch {
-            os_log(.error, log: logger, "Failed to set charge limit via XPC: %@", error.localizedDescription)
+            os_log(.error, log: logger, "Failed to set charge limit via XPC: %@, falling back to osascript", error.localizedDescription)
+            // Fallback to osascript with admin privileges
+            try await writeViaOSAScript(limit, enable: enable)
+        }
+    }
+    
+    private func writeViaOSAScript(_ limit: UInt8, enable: Bool) async throws {
+        // Use osascript with admin privileges to write to root domain
+        let limitStr = String(limit)
+        let enableStr = enable ? "1" : "0"
+        
+        let script = """
+        do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection mclLimitValue -int \(limitStr)" with administrator privileges
+        do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection isManuallyChargeLimited -int \(enableStr)" with administrator privileges
+        do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection MCLFeatureState -int 1" with administrator privileges
+        do shell script "/usr/bin/notifyutil -p com.apple.smartcharging.defaultschanged" with administrator privileges
+        """
+        
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        task.arguments = ["-e", script]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = pipe
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            
+            if task.terminationStatus != 0 {
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let errorOutput = String(data: data, encoding: .utf8) ?? "Unknown error"
+                os_log(.error, log: logger, "OSAScript write failed: %s", errorOutput)
+                throw ChargeLimitError.privilegedOperationFailed("Admin authorization failed: \(errorOutput)")
+            }
+            
+            os_log(.info, log: logger, "Successfully wrote charge limit %d%% via osascript", limit)
+        } catch let error as ChargeLimitError {
+            throw error
+        } catch {
+            os_log(.error, log: logger, "OSAScript execution failed: %s", error.localizedDescription)
             throw ChargeLimitError.privilegedOperationFailed(error.localizedDescription)
         }
-        
-        os_log(.info, log: logger, "Successfully set charge limit to %d%%", limit)
     }
     
     private func isSmartChargingSupported() -> Bool {
@@ -308,14 +349,14 @@ final class ChargeLimitService {
                 os_log(.error, log: logger, "defaults read failed: %s", error.localizedDescription)
             }
             return nil
-                }
+        }
+    }
     
-                // MARK: - Privileged Helper (SMJobBless)
+    // MARK: - Privileged Helper (SMJobBless)
     
-                func runPrivilegedHelper(arguments: [String]) async throws -> String {
-                    // This would integrate with SMJobBless for setting the limit
-                    // For now, we use the XPC helper approach
-                    throw ChargeLimitError.privilegedOperationFailed("XPC Helper approach used instead")
-                }
-            }
+    func runPrivilegedHelper(arguments: [String]) async throws -> String {
+        // This would integrate with SMJobBless for setting the limit
+        // For now, we use the XPC helper approach
+        throw ChargeLimitError.privilegedOperationFailed("XPC Helper approach used instead")
+    }
 }

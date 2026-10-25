@@ -5,10 +5,14 @@
 //  Main app entry point with manual menu bar integration.
 //  Uses NSApplication delegate pattern for SPM compatibility.
 //
+//  Note: Privileged helper (SMAppService daemon) requires Developer ID signing.
+//  For local development, charge limit writes fall back to osascript with admin prompt.
+//
 
 import SwiftUI
 import AppKit
 import ServiceManagement
+import os.log
 
 // MARK: - App Delegate
 

@@ -29,7 +29,7 @@ let package = Package(
             dependencies: ["ChargeLimitService"],
             path: "Sources/ChargeLimitApp",
             resources: [
-                .copy("../../Resources")
+                .copy("Resources")
             ],
             linkerSettings: [
                 .linkedFramework("Foundation"),

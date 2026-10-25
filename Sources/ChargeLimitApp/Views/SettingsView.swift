@@ -86,7 +86,7 @@ struct SettingsView: View {
     
     var body: some View {
         ZStack {
-            // Animated background - using SharedComponents style
+            // Animated background
             SettingsBackground(phase: viewModel.backgroundPhase)
                 .ignoresSafeArea()
             
@@ -189,7 +189,7 @@ struct SettingsView: View {
                             InfoCard(
                                 icon: "cpu.fill",
                                 title: "Механизм работы",
-                                description: "Приложение использует приватный фреймворк Apple PowerUI для управления демоном PowerUIAgent. Лимит записывается в домен настроек root: com.apple.smartcharging.topoffprotection через NSAppleScript с повышенными привилегиями.",
+                                description: "Приложение записывает лимит заряда в системный домен настроек (com.apple.smartcharging.topoffprotection) через osascript с повышенными привилегиями. Для production-релиза планируется привилегированный XPC-хелпер (SMAppService daemon) с подписью Developer ID.",
                                 color: .blue
                             )
                             
@@ -199,7 +199,7 @@ struct SettingsView: View {
                                 description: """
                                     • Системный ползунок в «Настройках → Батарея» показывает только 80–100%
                                     • Это приложение позволяет установить 20–100% (гранулярность 5%)
-                                    • Изменения лимита требуют пароль администратора (системный диалог)
+                                    • Изменение лимита требует пароль администратора (системный диалог)
                                     • Установленный лимит сохраняется после перезагрузки Mac
                                     • Обновление macOS может изменить ключи настроек — приложение обновится
                                     • Работает на Apple Silicon (M1/M2/M3/M4) и Intel
@@ -208,7 +208,7 @@ struct SettingsView: View {
                             )
                             
                             // GitHub link
-                            Link(destination: URL(string: "https://github.com/denissmoliakov/charge-limit")!) {
+                            Link(destination: URL(string: "https://github.com/denis0wn/charge-limit")!) {
                                 HStack(spacing: 10) {
                                     ZStack {
                                         Circle()
@@ -220,10 +220,10 @@ struct SettingsView: View {
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("Исходный код CLI-инструмента")
+                                        Text("Исходный код на GitHub")
                                             .font(.system(size: 14, weight: .semibold, design: .rounded))
                                             .foregroundStyle(.primary)
-                                        Text("GitHub: charge-limit project")
+                                        Text("denis0wn/charge-limit")
                                             .font(.system(size: 11, weight: .regular, design: .rounded))
                                             .foregroundStyle(.secondary)
                                     }
@@ -253,6 +253,7 @@ struct SettingsView: View {
                             AboutRow(label: "Архитектура", value: "Apple Silicon / Intel")
                             AboutRow(label: "Режим сборки", value: "SPM (Swift Package Manager)")
                             AboutRow(label: "Подпись", value: "Ad-hoc (локальная разработка)")
+                            AboutRow(label: "Механизм записи лимита", value: "osascript + admin prompt")
                         }
                     }
                     
