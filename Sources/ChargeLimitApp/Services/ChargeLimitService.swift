@@ -169,7 +169,7 @@ final class ChargeLimitService {
         defer { isLoading = false }
         
         do {
-            // Disable limit via XPC helper
+            // Disable limit via osascript (XPC will be attempted first in writeLimit)
             try await writeLimit(100, enable: false)
             await refresh()
         } catch {
@@ -210,9 +210,9 @@ final class ChargeLimitService {
             }
         } catch {
             os_log(.error, log: logger, "Failed to read limit via XPC: %@", error.localizedDescription)
-            // Fallback to defaults read (user domain)
-            let limitOutput = runDefaults(args: ["read", "com.apple.smartcharging.topoffprotection", "mclLimitValue"], asRoot: false)
-            let enabledOutput = runDefaults(args: ["read", "com.apple.smartcharging.topoffprotection", "isManuallyChargeLimited"], asRoot: false)
+            // Fallback to defaults read (root domain - no admin needed for reading)
+            let limitOutput = runDefaults(args: ["read", "/Library/Preferences/com.apple.smartcharging.topoffprotection", "mclLimitValue"], asRoot: false)
+            let enabledOutput = runDefaults(args: ["read", "/Library/Preferences/com.apple.smartcharging.topoffprotection", "isManuallyChargeLimited"], asRoot: false)
             
             if let limitStr = limitOutput, let limit = UInt8(limitStr.trimmingCharacters(in: .whitespacesAndNewlines)) {
                 currentLimit = limit
@@ -240,13 +240,35 @@ final class ChargeLimitService {
         
         os_log(.info, log: logger, "Setting charge limit to %d%%, enable=%@", limit, enable ? "true" : "false")
         
+        // Try XPC first with a short timeout
         do {
-            try await client.setChargeLimit(Int(limit))
+            try await withTimeout(seconds: 2) {
+                try await client.setChargeLimit(Int(limit))
+            }
             os_log(.info, log: logger, "Successfully set charge limit to %d%% via XPC", limit)
+            return
         } catch {
-            os_log(.error, log: logger, "Failed to set charge limit via XPC: %@, falling back to osascript", error.localizedDescription)
-            // Fallback to osascript with admin privileges
-            try await writeViaOSAScript(limit, enable: enable)
+            os_log(.info, log: logger, "XPC unavailable or failed (%@), using osascript fallback", error.localizedDescription)
+        }
+        
+        // Fallback to osascript with admin privileges
+        try await writeViaOSAScript(limit, enable: enable)
+    }
+    
+    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw ChargeLimitError.privilegedOperationFailed("Operation timed out after \(seconds)s")
+            }
+            
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
         }
     }
     
@@ -254,12 +276,18 @@ final class ChargeLimitService {
         // Use osascript with admin privileges to write to root domain
         let limitStr = String(limit)
         let enableStr = enable ? "1" : "0"
+        let featureStateStr = enable ? "1" : "0"
         
+        // Single script with error checking - stops on first failure
         let script = """
-        do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection mclLimitValue -int \(limitStr)" with administrator privileges
-        do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection isManuallyChargeLimited -int \(enableStr)" with administrator privileges
-        do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection MCLFeatureState -int 1" with administrator privileges
-        do shell script "/usr/bin/notifyutil -p com.apple.smartcharging.defaultschanged" with administrator privileges
+        try
+            do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection mclLimitValue -int \(limitStr)" with administrator privileges
+            do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection isManuallyChargeLimited -int \(enableStr)" with administrator privileges
+            do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection MCLFeatureState -int \(featureStateStr)" with administrator privileges
+            do shell script "/usr/bin/notifyutil -p com.apple.smartcharging.defaultschanged" with administrator privileges
+        on error errMsg number errNum
+            error "Failed to write charge limit: " & errMsg & " (error " & errNum & ")"
+        end try
         """
         
         let task = Process()
