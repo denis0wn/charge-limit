@@ -28,6 +28,10 @@ final class MenuBarViewModel {
     let sliderDragState = SliderDragState()
     let presetPressState = PressState()
     
+    // System state (read-only from service)
+    private(set) var systemCurrentLimit: Int? = nil
+    private(set) var systemIsLimitEnabled: Bool = false
+    
     init(service: ChargeLimitService, menuBarManager: MenuBarManager, onOpenSettings: @escaping () -> Void) {
         self.service = service
         self.menuBarManager = menuBarManager
@@ -50,13 +54,14 @@ final class MenuBarViewModel {
     }
     
     private func updateFromService() {
-        // Update selected limit from system (for display)
-        selectedLimit = currentLimit
+        // Update system state for display ONLY - do NOT overwrite selectedLimit
+        systemCurrentLimit = service.state?.currentLimit.map(Int.init)
+        systemIsLimitEnabled = service.state?.isEnabled ?? false
         
         let charge = currentChargeLevel
         let charging = isCharging
-        let limited = isLimitEnabled
-        let limit = currentLimit
+        let limited = systemIsLimitEnabled
+        let limit = systemCurrentLimit
         
         batteryState.configure(
             chargeLevel: charge,
@@ -146,11 +151,15 @@ final class MenuBarViewModel {
     }
     
     var currentLimit: Int {
-        service.state?.currentLimit.map(Int.init) ?? 80
+        // Show system limit if enabled, otherwise show user's selected limit
+        if systemIsLimitEnabled, let limit = systemCurrentLimit {
+            return limit
+        }
+        return selectedLimit
     }
     
     var isLimitEnabled: Bool {
-        service.state?.isEnabled ?? false
+        systemIsLimitEnabled
     }
     
     var timeRemaining: String {
@@ -258,7 +267,7 @@ struct MenuBarView: View {
                                 chargeLevel: viewModel.currentChargeLevel,
                                 isCharging: viewModel.isCharging,
                                 isLimited: viewModel.isLimitEnabled,
-                                limitPercent: viewModel.isLimitEnabled ? viewModel.currentLimit : nil,
+                                limitPercent: viewModel.isLimitEnabled ? viewModel.systemCurrentLimit : nil,
                                 size: .tiny,
                                 animated: true,
                                 state: viewModel.batteryState
@@ -267,7 +276,7 @@ struct MenuBarView: View {
                             HStack(spacing: 10) {
                                 StatusBadge(
                                     icon: viewModel.isLimitEnabled ? "checkmark.shield.fill" : "shield.slash.fill",
-                                    text: viewModel.isLimitEnabled ? "Лимит: \(viewModel.currentLimit)%" : "Лимит отключён",
+                                    text: viewModel.isLimitEnabled ? "Лимит: \(viewModel.systemCurrentLimit ?? 0)%" : "Лимит отключён",
                                     color: viewModel.isLimitEnabled ? .blue : .orange,
                                     isActive: viewModel.isLimitEnabled
                                 )

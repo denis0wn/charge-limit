@@ -16,6 +16,10 @@ final class ContentViewModel {
     var authError: String? = nil { didSet { objectWillChange.send() } }
     var showingAuthAlert: Bool = false { didSet { objectWillChange.send() } }
     
+    // System state (read-only from service)
+    private(set) var systemCurrentLimit: Int? = nil
+    private(set) var systemIsLimitEnabled: Bool = false
+    
     let objectWillChange = ObservableObjectPublisher()
     
     let service: ChargeLimitService
@@ -51,13 +55,15 @@ final class ContentViewModel {
     }
     
     private func updateFromService() {
-        selectedLimit = currentLimit
+        // Update system state for display ONLY - do NOT overwrite selectedLimit
+        systemCurrentLimit = service.state?.currentLimit.map(Int.init)
+        systemIsLimitEnabled = service.state?.isEnabled ?? false
         
         // Update battery states
         let charge = currentChargeLevel
         let charging = isCharging
-        let limited = isLimitEnabled
-        let limit = currentLimit
+        let limited = systemIsLimitEnabled
+        let limit = systemCurrentLimit
         
         heroBatteryState.configure(
             chargeLevel: charge,
@@ -95,11 +101,15 @@ final class ContentViewModel {
     }
     
     var currentLimit: Int {
-        service.state?.currentLimit.map(Int.init) ?? 80
+        // Show system limit if enabled, otherwise show user's selected limit
+        if systemIsLimitEnabled, let limit = systemCurrentLimit {
+            return limit
+        }
+        return selectedLimit
     }
     
     var isLimitEnabled: Bool {
-        service.state?.isEnabled ?? false
+        systemIsLimitEnabled
     }
     
     var batteryHealth: String {
@@ -347,7 +357,7 @@ struct HeroBatterySection: View {
                 chargeLevel: viewModel.currentChargeLevel,
                 isCharging: viewModel.isCharging,
                 isLimited: viewModel.isLimitEnabled,
-                limitPercent: viewModel.isLimitEnabled ? viewModel.currentLimit : nil,
+                limitPercent: viewModel.isLimitEnabled ? viewModel.systemCurrentLimit : nil,
                 size: .large,
                 animated: true,
                 state: viewModel.heroBatteryState
@@ -357,7 +367,7 @@ struct HeroBatterySection: View {
             HStack(spacing: 12) {
                 StatusBadge(
                     icon: viewModel.isLimitEnabled ? "checkmark.shield.fill" : "shield.slash.fill",
-                    text: viewModel.isLimitEnabled ? "Лимит: \(viewModel.currentLimit)%" : "Лимит отключён",
+                    text: viewModel.isLimitEnabled ? "Лимит: \(viewModel.systemCurrentLimit ?? 0)%" : "Лимит отключён",
                     color: viewModel.isLimitEnabled ? .blue : .orange,
                     isActive: viewModel.isLimitEnabled
                 )
@@ -405,14 +415,14 @@ struct ControlSection: View {
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Text("\(viewModel.currentLimit)%")
+                        Text("\(viewModel.selectedLimit)%")
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundStyle(.blue)
                             .contentTransition(.numericText())
                     }
                     
                     PremiumSlider(
-                        value: Double(viewModel.currentLimit),
+                        value: Double(viewModel.selectedLimit),
                         range: 20...100,
                         step: 5,
                         activeColor: .blue,
@@ -458,7 +468,7 @@ struct BatteryInfoSection: View {
                     chargeLevel: viewModel.currentChargeLevel,
                     isCharging: viewModel.isCharging,
                     isLimited: viewModel.isLimitEnabled,
-                    limitPercent: viewModel.isLimitEnabled ? viewModel.currentLimit : nil,
+                    limitPercent: viewModel.isLimitEnabled ? viewModel.systemCurrentLimit : nil,
                     size: .medium,
                     animated: false,
                     state: viewModel.limitIndicatorBatteryState

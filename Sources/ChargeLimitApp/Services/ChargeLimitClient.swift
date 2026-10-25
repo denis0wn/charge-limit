@@ -24,6 +24,9 @@ final class ChargeLimitClient {
     // Queue for handling XPC callbacks
     private let callbackQueue = DispatchQueue(label: "com.denissmoliakov.chargelimit.xpc-callbacks", qos: .userInitiated)
     
+    // Short timeout for XPC operations - fail fast if helper not available
+    private let xpcTimeout: TimeInterval = 1.5
+    
     init() {
         setupConnection()
     }
@@ -53,11 +56,10 @@ final class ChargeLimitClient {
         }
         
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            // Add a timeout to prevent continuation leaks
             let timeoutTask = DispatchWorkItem {
                 continuation.resume(throwing: ChargeLimitError.privilegedOperationFailed("XPC request timeout"))
             }
-            callbackQueue.asyncAfter(deadline: .now() + 10, execute: timeoutTask)
+            callbackQueue.asyncAfter(deadline: .now() + xpcTimeout, execute: timeoutTask)
             
             proxy.setChargeLimit(percentage) { result, error in
                 timeoutTask.cancel()
@@ -78,11 +80,10 @@ final class ChargeLimitClient {
         }
         
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Int, Error>) in
-            // Add a timeout to prevent continuation leaks
             let timeoutTask = DispatchWorkItem {
                 continuation.resume(throwing: ChargeLimitError.readFailed("XPC request timeout"))
             }
-            callbackQueue.asyncAfter(deadline: .now() + 10, execute: timeoutTask)
+            callbackQueue.asyncAfter(deadline: .now() + xpcTimeout, execute: timeoutTask)
             
             proxy.getChargeLimit { result, error in
                 timeoutTask.cancel()

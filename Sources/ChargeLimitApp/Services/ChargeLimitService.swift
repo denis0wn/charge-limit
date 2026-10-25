@@ -169,7 +169,6 @@ final class ChargeLimitService {
         defer { isLoading = false }
         
         do {
-            // Disable limit via osascript (XPC will be attempted first in writeLimit)
             try await writeLimit(100, enable: false)
             await refresh()
         } catch {
@@ -180,7 +179,7 @@ final class ChargeLimitService {
     // MARK: - Private Implementation
     
     private func readCurrentState() async throws -> ChargeLimitState {
-        let batteryStatus = getBatteryStatus()
+        let batteryStatus = await getBatteryStatusAsync()
         let isSupported = isSmartChargingSupported()
         
         if !isSupported {
@@ -198,21 +197,23 @@ final class ChargeLimitService {
         var currentLimit: UInt8? = nil
         var isEnabled = false
         
-        // Try to read via XPC helper first
+        // Try to read via XPC helper first (with timeout)
         do {
-            let limit = try await xpcClient?.getChargeLimit() ?? 100
+            let limit = try await withTimeout(seconds: 2) { [self] in
+                try await xpcClient?.getChargeLimit() ?? 100
+            }
             currentLimit = UInt8(limit)
             
-            // Read isManuallyChargeLimited via defaults (no admin needed for reading)
-            let enabledOutput = runDefaults(args: ["read", "com.apple.smartcharging.topoffprotection", "isManuallyChargeLimited"], asRoot: false)
+            // Read isManuallyChargeLimited via defaults (no admin needed for reading from root domain)
+            let enabledOutput = runDefaults(args: ["read", "/Library/Preferences/com.apple.smartcharging.topoffprotection", "isManuallyChargeLimited"])
             if let enabledStr = enabledOutput, let enabledVal = Int(enabledStr.trimmingCharacters(in: .whitespacesAndNewlines)) {
                 isEnabled = enabledVal != 0
             }
         } catch {
             os_log(.error, log: logger, "Failed to read limit via XPC: %@", error.localizedDescription)
             // Fallback to defaults read (root domain - no admin needed for reading)
-            let limitOutput = runDefaults(args: ["read", "/Library/Preferences/com.apple.smartcharging.topoffprotection", "mclLimitValue"], asRoot: false)
-            let enabledOutput = runDefaults(args: ["read", "/Library/Preferences/com.apple.smartcharging.topoffprotection", "isManuallyChargeLimited"], asRoot: false)
+            let limitOutput = runDefaults(args: ["read", "/Library/Preferences/com.apple.smartcharging.topoffprotection", "mclLimitValue"])
+            let enabledOutput = runDefaults(args: ["read", "/Library/Preferences/com.apple.smartcharging.topoffprotection", "isManuallyChargeLimited"])
             
             if let limitStr = limitOutput, let limit = UInt8(limitStr.trimmingCharacters(in: .whitespacesAndNewlines)) {
                 currentLimit = limit
@@ -228,7 +229,7 @@ final class ChargeLimitService {
             isEnabled: isEnabled,
             isSupported: true,
             availableUILimits: [20, 30, 40, 50, 60, 70, 80, 90, 100],
-            batteryStatus: getBatteryStatus(),
+            batteryStatus: batteryStatus,
             timestamp: Date()
         )
     }
@@ -349,35 +350,38 @@ final class ChargeLimitService {
         }
     }
     
-    // Public method to get battery status without admin (uses pmset)
-    func getBatteryStatusPublic() async -> String {
-        return getBatteryStatus()
+    // Async version for non-blocking reads
+    func getBatteryStatusAsync() async -> String {
+        await Task.detached(priority: .utility) {
+            self.getBatteryStatus()
+        }.value
     }
     
-    private func runDefaults(args: [String], asRoot: Bool) -> String? {
-        if asRoot {
-            return nil
-        } else {
-            let task = Process()
-            task.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-            task.arguments = args
-            
-            let pipe = Pipe()
-            task.standardOutput = pipe
-            task.standardError = Pipe()
-            
-            do {
-                try task.run()
-                task.waitUntilExit()
-                if task.terminationStatus == 0 {
-                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                    return String(data: data, encoding: .utf8)
-                }
-            } catch {
-                os_log(.error, log: logger, "defaults read failed: %s", error.localizedDescription)
+    // Public method to get battery status without admin (uses pmset)
+    func getBatteryStatusPublic() async -> String {
+        return await getBatteryStatusAsync()
+    }
+    
+    private func runDefaults(args: [String]) -> String? {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
+        task.arguments = args
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = Pipe()
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            if task.terminationStatus == 0 {
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                return String(data: data, encoding: .utf8)
             }
-            return nil
+        } catch {
+            os_log(.error, log: logger, "defaults read failed: %s", error.localizedDescription)
         }
+        return nil
     }
     
     // MARK: - Privileged Helper (SMJobBless)
