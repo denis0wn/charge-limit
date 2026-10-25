@@ -116,8 +116,8 @@ struct PremiumSlider: View {
                 .scaleEffect(dragState.isDragging ? 1.2 : 1.0)
                 .animation(.spring(response: 0.25, dampingFraction: 0.7), value: dragState.isDragging)
             }
-            .contentShape(Rectangle())
-            .highPriorityGesture(
+            .contentShape(Rectangle().inset(by: -8))
+            .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { gesture in
                         if !dragState.isDragging {
@@ -233,11 +233,14 @@ struct CompactPremiumSlider: View {
                 .scaleEffect(dragState.isDragging ? 1.15 : 1.0)
                 .animation(.spring(response: 0.2, dampingFraction: 0.7), value: dragState.isDragging)
             }
-            .contentShape(Rectangle())
-            .highPriorityGesture(
+            // Increased hit area for better gesture recognition on macOS
+            .contentShape(Rectangle().inset(by: -8))
+            .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { gesture in
-                        dragState.isDragging = true
+                        if !dragState.isDragging {
+                            dragState.isDragging = true
+                        }
                         let clampedX = min(max(gesture.location.x, trackRect.minX), trackRect.maxX)
                         let newProgress = (clampedX - trackRect.minX) / trackRect.width
                         let newValue = range.lowerBound + newProgress * (range.upperBound - range.lowerBound)

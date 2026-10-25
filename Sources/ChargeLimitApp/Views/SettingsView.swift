@@ -16,10 +16,19 @@ final class SettingsViewModel {
     var checkInterval: Int = 300 { didSet { objectWillChange.send() } }
     var backgroundPhase: CGFloat = 0 { didSet { objectWillChange.send() } }
     
+    // Helper status
+    var helperStatus: String = "Проверка..." { didSet { objectWillChange.send() } }
+    var helperStatusColor: Color = .blue { didSet { objectWillChange.send() } }
+    var helperNeedsAction: Bool = false { didSet { objectWillChange.send() } }
+    var helperActionTitle: String = "" { didSet { objectWillChange.send() } }
+    var helperError: String? = nil { didSet { objectWillChange.send() } }
+    
     let objectWillChange = ObservableObjectPublisher()
+    private let helperManager = HelperManager.shared
     
     init() {
         loadDefaults()
+        updateHelperStatus()
     }
     
     private func loadDefaults() {
@@ -29,6 +38,55 @@ final class SettingsViewModel {
         showPercentageInMenuBar = defaults.object(forKey: "showPercentageInMenuBar") as? Bool ?? true
         notifyOnLimitReached = defaults.object(forKey: "notifyOnLimitReached") as? Bool ?? true
         checkInterval = defaults.object(forKey: "checkInterval") as? Int ?? 300
+    }
+    
+    func updateHelperStatus() {
+        helperManager.refreshStatus()
+        
+        switch helperManager.status {
+        case .enabled:
+            helperStatus = "Привилегированный хелпер установлен и активен ✓"
+            helperStatusColor = .green
+            helperNeedsAction = false
+        case .requiresApproval:
+            helperStatus = "Требуется одобрение в Настройках системы ⚠️"
+            helperStatusColor = .orange
+            helperNeedsAction = true
+            helperActionTitle = "Открыть Настройки системы"
+        case .notRegistered:
+            helperStatus = "Привилегированный хелпер не установлен"
+            helperStatusColor = .blue
+            helperNeedsAction = true
+            helperActionTitle = "Установить хелпер"
+        case .notFound:
+            helperStatus = "Конфигурация хелпера не найдена в приложении"
+            helperStatusColor = .red
+            helperNeedsAction = false
+        @unknown default:
+            helperStatus = "Статус неизвестен"
+            helperStatusColor = .gray
+            helperNeedsAction = false
+        }
+        
+        helperError = helperManager.lastError
+    }
+    
+    func registerHelper() {
+        Task {
+            do {
+                try await helperManager.register()
+                await MainActor.run { self.updateHelperStatus() }
+            } catch {
+                await MainActor.run {
+                    self.helperError = error.localizedDescription
+                    self.updateHelperStatus()
+                }
+            }
+        }
+    }
+    
+    func openSystemSettingsForHelper() {
+        helperManager.openSystemSettings()
     }
     
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -94,6 +152,54 @@ struct SettingsView: View {
                 VStack(spacing: 24) {
                     // Header
                     SettingsHeader()
+                    
+                    // Helper Status Section
+                    SettingsSection(title: "Привилегированный хелпер", icon: "shield.lefthalf.filled", color: .blue) {
+                        VStack(spacing: 16) {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(viewModel.helperStatusColor.opacity(0.15))
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: helperStatusIcon)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundStyle(viewModel.helperStatusColor)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Статус системного демона")
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(.primary)
+                                    Text(viewModel.helperStatus)
+                                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                            }
+                            
+                            if viewModel.helperNeedsAction {
+                                Button(action: viewModel.helperActionTitle == "Установить хелпер" ? viewModel.registerHelper : viewModel.openSystemSettingsForHelper) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: viewModel.helperActionTitle == "Установить хелпер" ? "arrow.down.circle.fill" : "gearshape.fill")
+                                            .font(.system(size: 13, weight: .medium))
+                                        Text(viewModel.helperActionTitle)
+                                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                }
+                                .buttonStyle(PremiumButtonStyle(color: viewModel.helperStatusColor))
+                            }
+                            
+                            if let error = viewModel.helperError {
+                                Text(error)
+                                    .font(.system(size: 11, weight: .regular, design: .rounded))
+                                    .foregroundStyle(.red)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
                     
                     // General section
                     SettingsSection(title: "Общие", icon: "gearshape.fill", color: .blue) {
@@ -189,7 +295,7 @@ struct SettingsView: View {
                             InfoCard(
                                 icon: "cpu.fill",
                                 title: "Механизм работы",
-                                description: "Приложение записывает лимит заряда в системный домен настроек (com.apple.smartcharging.topoffprotection) через osascript с повышенными привилегиями. Для production-релиза планируется привилегированный XPC-хелпер (SMAppService daemon) с подписью Developer ID.",
+                                description: "Приложение использует привилегированный XPC-хелпер (SMAppService daemon) для записи лимита заряда через системный домен com.apple.smartcharging.topoffprotection. Хелпер устанавливается в /Library/PrivilegedHelperTools/ и требует однократного одобрения в Настройках системы.",
                                 color: .blue
                             )
                             
@@ -199,7 +305,7 @@ struct SettingsView: View {
                                 description: """
                                     • Системный ползунок в «Настройках → Батарея» показывает только 80–100%
                                     • Это приложение позволяет установить 20–100% (гранулярность 5%)
-                                    • Изменение лимита требует пароль администратора (системный диалог)
+                                    • Установка хелпера требует одобрения в Настройках системы (один раз)
                                     • Установленный лимит сохраняется после перезагрузки Mac
                                     • Обновление macOS может изменить ключи настроек — приложение обновится
                                     • Работает на Apple Silicon (M1/M2/M3/M4) и Intel
@@ -253,7 +359,7 @@ struct SettingsView: View {
                             AboutRow(label: "Архитектура", value: "Apple Silicon / Intel")
                             AboutRow(label: "Режим сборки", value: "SPM (Swift Package Manager)")
                             AboutRow(label: "Подпись", value: "Ad-hoc (локальная разработка)")
-                            AboutRow(label: "Механизм записи лимита", value: "osascript + admin prompt")
+                            AboutRow(label: "Привилегированный хелпер", value: "SMAppService daemon")
                         }
                     }
                     
@@ -265,6 +371,18 @@ struct SettingsView: View {
         .frame(width: 520, height: 620)
         .onAppear {
             viewModel.startBackgroundAnimation()
+            viewModel.updateHelperStatus()
+        }
+    }
+    
+    private var helperStatusIcon: String {
+        let status = HelperManager.shared.status
+        switch status {
+        case .enabled: return "checkmark.shield.fill"
+        case .requiresApproval: return "exclamationmark.triangle.fill"
+        case .notRegistered: return "arrow.down.circle.fill"
+        case .notFound: return "xmark.shield.fill"
+        @unknown default: return "questionmark.shield.fill"
         }
     }
 }

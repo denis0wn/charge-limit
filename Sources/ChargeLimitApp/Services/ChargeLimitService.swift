@@ -1,9 +1,8 @@
 // ChargeLimitService.swift
 // ChargeLimitApp
 //
-// Core service for managing battery charge limits via XPC Helper
-// Uses ChargeLimitClient (XPC) for privileged operations
-// Falls back to osascript with admin privileges for local development
+// Core service for managing battery charge limits
+// Uses SMAppService helper when available, falls back to CLI tool with sudo credential caching
 // NO SwiftUI macros - uses manual observation for SPM compilation
 
 import Foundation
@@ -34,6 +33,9 @@ enum ChargeLimitError: LocalizedError {
     case invalidLimitValue(UInt8)
     case authorizationFailed(String)
     case smcError(String)
+    case helperNotInstalled
+    case helperNotAuthorized
+    case sudoCredentialsRequired
     
     var errorDescription: String? {
         switch self {
@@ -42,7 +44,7 @@ enum ChargeLimitError: LocalizedError {
         case .frameworkLoadFailed(let msg):
             return "Не удалось загрузить PowerUI.framework: \(msg)"
         case .clientCreationFailed:
-            return "Не удалось создать клиент PowerUI"
+            return "Не удалось создать XPC клиент"
         case .readFailed(let msg):
             return "Ошибка чтения лимита: \(msg)"
         case .writeFailed(let msg):
@@ -50,11 +52,17 @@ enum ChargeLimitError: LocalizedError {
         case .privilegedOperationFailed(let msg):
             return "Ошибка привилегированной операции: \(msg)"
         case .invalidLimitValue(let val):
-            return "Недопустимое значение лимита: \(val)% (допустимо 20-100%)"
+            return "Недопустимое значение лимита: \(val)% (допустимо 1-100%)"
         case .authorizationFailed(let msg):
             return "Ошибка авторизации: \(msg)"
         case .smcError(let msg):
             return "Ошибка SMC: \(msg)"
+        case .helperNotInstalled:
+            return "Привилегированный хелпер не установлен. Установите его в Настройках → Привилегированный хелпер."
+        case .helperNotAuthorized:
+            return "Хелпер требует одобрения в Настройках системы → Login Items & Extensions."
+        case .sudoCredentialsRequired:
+            return "Требуются права администратора. Запустите в терминале: sudo charge-limit set <значение>"
         }
     }
 }
@@ -108,7 +116,7 @@ final class ChargeLimitService {
     
     let logger = OSLog(subsystem: "com.denissmoliakov.chargelimit", category: "ChargeLimitService")
     
-    // XPC Client for communicating with privileged helper
+    // XPC Client for communicating with privileged helper (when available)
     private var xpcClient: ChargeLimitClient?
     
     init() {
@@ -145,7 +153,7 @@ final class ChargeLimitService {
     }
     
     func setLimit(_ limit: Int) async throws {
-        guard limit >= 20 && limit <= 100 else {
+        guard limit >= 1 && limit <= 100 else {
             throw ChargeLimitError.invalidLimitValue(UInt8(limit))
         }
         
@@ -187,40 +195,66 @@ final class ChargeLimitService {
                 currentLimit: nil,
                 isEnabled: false,
                 isSupported: false,
-                availableUILimits: [20, 30, 40, 50, 60, 70, 80, 90, 100],
+                availableUILimits: Array(1...100),
                 batteryStatus: batteryStatus,
                 timestamp: Date()
             )
         }
         
-        // Read from root domain via XPC helper
+        // Try to read via XPC helper first (with timeout)
         var currentLimit: UInt8? = nil
         var isEnabled = false
         
-        // Try to read via XPC helper first (with timeout)
         do {
             let limit = try await withTimeout(seconds: 2) { [self] in
                 try await xpcClient?.getChargeLimit() ?? 100
             }
             currentLimit = UInt8(limit)
             
-            // Read isManuallyChargeLimited via defaults (no admin needed for reading from root domain)
-            let enabledOutput = runDefaults(args: ["read", "/Library/Preferences/com.apple.smartcharging.topoffprotection", "isManuallyChargeLimited"])
+            // Read isManuallyChargeLimited via defaults (no admin needed for reading from system domain)
+            let enabledOutput = runDefaults(args: ["isManuallyChargeLimited"])
             if let enabledStr = enabledOutput, let enabledVal = Int(enabledStr.trimmingCharacters(in: .whitespacesAndNewlines)) {
                 isEnabled = enabledVal != 0
             }
         } catch {
             os_log(.error, log: logger, "Failed to read limit via XPC: %@", error.localizedDescription)
-            // Fallback to defaults read (root domain - no admin needed for reading)
-            let limitOutput = runDefaults(args: ["read", "/Library/Preferences/com.apple.smartcharging.topoffprotection", "mclLimitValue"])
-            let enabledOutput = runDefaults(args: ["read", "/Library/Preferences/com.apple.smartcharging.topoffprotection", "isManuallyChargeLimited"])
-            
-            if let limitStr = limitOutput, let limit = UInt8(limitStr.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                currentLimit = limit
-            }
-            
-            if let enabledStr = enabledOutput, let enabledVal = Int(enabledStr.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                isEnabled = enabledVal != 0
+            // Fallback to CLI tool for reading (requires sudo credentials)
+            do {
+                let cliOutput = try await readViaCLITool()
+                // Parse the CLI output to extract limit and enabled status
+                let lines = cliOutput.components(separatedBy: "\n")
+                for line in lines {
+                    if line.contains("mclLimitValue") {
+                        let parts = line.components(separatedBy: "=")
+                        if parts.count >= 2 {
+                            let valueStr = parts[1].trimmingCharacters(in: .whitespaces)
+                            if let limit = UInt8(valueStr) {
+                                currentLimit = limit
+                            }
+                        }
+                    } else if line.contains("isManuallyChargeLimited") {
+                        let parts = line.components(separatedBy: "=")
+                        if parts.count >= 2 {
+                            let valueStr = parts[1].trimmingCharacters(in: .whitespaces)
+                            if let enabledVal = Int(valueStr) {
+                                isEnabled = enabledVal != 0
+                            }
+                        }
+                    }
+                }
+            } catch {
+                os_log(.error, log: logger, "Failed to read limit via CLI tool: %@", error.localizedDescription)
+                // Last resort: try defaults read (may not work for system domain)
+                let limitOutput = runDefaults(args: ["mclLimitValue"])
+                let enabledOutput = runDefaults(args: ["isManuallyChargeLimited"])
+                
+                if let limitStr = limitOutput, let limit = UInt8(limitStr.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                    currentLimit = limit
+                }
+                
+                if let enabledStr = enabledOutput, let enabledVal = Int(enabledStr.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                    isEnabled = enabledVal != 0
+                }
             }
         }
         
@@ -228,32 +262,125 @@ final class ChargeLimitService {
             currentLimit: currentLimit,
             isEnabled: isEnabled,
             isSupported: true,
-            availableUILimits: [20, 30, 40, 50, 60, 70, 80, 90, 100],
+            availableUILimits: Array(1...100),
             batteryStatus: batteryStatus,
             timestamp: Date()
         )
     }
     
     private func writeLimit(_ limit: UInt8, enable: Bool = true) async throws {
-        guard let client = xpcClient else {
-            throw ChargeLimitError.clientCreationFailed
-        }
-        
-        os_log(.info, log: logger, "Setting charge limit to %d%%, enable=%@", limit, enable ? "true" : "false")
-        
         // Try XPC first with a short timeout
-        do {
-            try await withTimeout(seconds: 2) {
-                try await client.setChargeLimit(Int(limit))
+        if let client = xpcClient {
+            do {
+                try await withTimeout(seconds: 5) {
+                    try await client.setChargeLimit(Int(limit), enable: enable)
+                }
+                os_log(.info, log: logger, "Successfully set charge limit to %d%% via XPC", limit)
+                return
+            } catch ChargeLimitError.helperNotInstalled {
+                // Fall through to fallback
+            } catch ChargeLimitError.helperNotAuthorized {
+                throw ChargeLimitError.helperNotAuthorized
+            } catch {
+                os_log(.error, log: logger, "XPC write failed: %@", error.localizedDescription)
+                // Fall through to fallback
             }
-            os_log(.info, log: logger, "Successfully set charge limit to %d%% via XPC", limit)
-            return
-        } catch {
-            os_log(.info, log: logger, "XPC unavailable or failed (%@), using osascript fallback", error.localizedDescription)
         }
         
-        // Fallback to osascript with admin privileges
-        try await writeViaOSAScript(limit, enable: enable)
+        // Fallback: Use CLI tool with sudo credential caching
+        try await writeViaCLITool(limit: limit, enable: enable)
+    }
+    
+    private func writeViaCLITool(limit: UInt8, enable: Bool) async throws {
+        let toolPath = "/usr/local/bin/charge-limit"
+        
+        // Check if CLI tool exists
+        guard FileManager.default.fileExists(atPath: toolPath) else {
+            throw ChargeLimitError.privilegedOperationFailed("CLI tool not found at \(toolPath). Install charge-limit first.")
+        }
+        
+        let args: [String]
+        if enable {
+            args = ["set", "\(limit)"]
+        } else {
+            args = ["off"]
+        }
+        
+        os_log(.info, log: logger, "Executing CLI tool: %@ %@", toolPath, args.joined(separator: " "))
+        
+        // Run the CLI tool with sudo (will refresh timestamp via sudo -v)
+        let output = try await runCLIToolWithSudo(toolPath: toolPath, args: args)
+        os_log(.info, log: logger, "CLI tool output: %@", output)
+        
+        // Wait for changes to propagate
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+    }
+    
+    private func runSudoTest() async -> Bool {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
+        task.arguments = ["-n", "true"]
+        
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = pipe
+        
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+    
+    private func runCLIToolWithSudo(toolPath: String, args: [String]) async throws -> String {
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
+            task.arguments = ["-n", toolPath] + args
+        
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.standardError = pipe
+        
+            do {
+                try task.run()
+                task.waitUntilExit()
+            
+                if task.terminationStatus != 0 {
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let errorOutput = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    os_log(.error, log: logger, "CLI tool failed: %s", errorOutput)
+                
+                    // Check if failure is due to missing sudo credentials
+                    if errorOutput.contains("password is required") || errorOutput.contains("a password is required") {
+                        throw ChargeLimitError.sudoCredentialsRequired
+                    }
+                
+                    throw ChargeLimitError.privilegedOperationFailed("sudo command failed: \(errorOutput)")
+                }
+            
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                return String(data: data, encoding: .utf8) ?? ""
+            } catch let error as ChargeLimitError {
+                throw error
+            } catch {
+                os_log(.error, log: logger, "CLI tool execution failed: %s", error.localizedDescription)
+                throw ChargeLimitError.privilegedOperationFailed("Failed to execute CLI tool: \(error.localizedDescription)")
+            }
+        }
+    
+    private func readViaCLITool() async throws -> String {
+        let toolPath = "/usr/local/bin/charge-limit"
+        
+        guard FileManager.default.fileExists(atPath: toolPath) else {
+            throw ChargeLimitError.privilegedOperationFailed("CLI tool not found at \(toolPath). Install charge-limit first.")
+        }
+        
+        // Run the CLI tool with sudo (will refresh timestamp via sudo -v)
+        let output = try await runCLIToolWithSudo(toolPath: toolPath, args: ["get"])
+        os_log(.info, log: logger, "CLI tool get output: %@", output)
+        return output
     }
     
     private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
@@ -270,52 +397,6 @@ final class ChargeLimitService {
             let result = try await group.next()!
             group.cancelAll()
             return result
-        }
-    }
-    
-    private func writeViaOSAScript(_ limit: UInt8, enable: Bool) async throws {
-        // Use osascript with admin privileges to write to root domain
-        let limitStr = String(limit)
-        let enableStr = enable ? "1" : "0"
-        let featureStateStr = enable ? "1" : "0"
-        
-        // Single script with error checking - stops on first failure
-        let script = """
-        try
-            do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection mclLimitValue -int \(limitStr)" with administrator privileges
-            do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection isManuallyChargeLimited -int \(enableStr)" with administrator privileges
-            do shell script "defaults write /Library/Preferences/com.apple.smartcharging.topoffprotection MCLFeatureState -int \(featureStateStr)" with administrator privileges
-            do shell script "/usr/bin/notifyutil -p com.apple.smartcharging.defaultschanged" with administrator privileges
-        on error errMsg number errNum
-            error "Failed to write charge limit: " & errMsg & " (error " & errNum & ")"
-        end try
-        """
-        
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        task.arguments = ["-e", script]
-        
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = pipe
-        
-        do {
-            try task.run()
-            task.waitUntilExit()
-            
-            if task.terminationStatus != 0 {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let errorOutput = String(data: data, encoding: .utf8) ?? "Unknown error"
-                os_log(.error, log: logger, "OSAScript write failed: %s", errorOutput)
-                throw ChargeLimitError.privilegedOperationFailed("Admin authorization failed: \(errorOutput)")
-            }
-            
-            os_log(.info, log: logger, "Successfully wrote charge limit %d%% via osascript", limit)
-        } catch let error as ChargeLimitError {
-            throw error
-        } catch {
-            os_log(.error, log: logger, "OSAScript execution failed: %s", error.localizedDescription)
-            throw ChargeLimitError.privilegedOperationFailed(error.localizedDescription)
         }
     }
     
@@ -365,7 +446,8 @@ final class ChargeLimitService {
     private func runDefaults(args: [String]) -> String? {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-        task.arguments = args
+        // Read from the system domain (no path) to get the actual values
+        task.arguments = ["read", "com.apple.smartcharging.topoffprotection"] + args
         
         let pipe = Pipe()
         task.standardOutput = pipe
@@ -382,13 +464,5 @@ final class ChargeLimitService {
             os_log(.error, log: logger, "defaults read failed: %s", error.localizedDescription)
         }
         return nil
-    }
-    
-    // MARK: - Privileged Helper (SMJobBless)
-    
-    func runPrivilegedHelper(arguments: [String]) async throws -> String {
-        // This would integrate with SMJobBless for setting the limit
-        // For now, we use the XPC helper approach
-        throw ChargeLimitError.privilegedOperationFailed("XPC Helper approach used instead")
     }
 }

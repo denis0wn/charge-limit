@@ -4,15 +4,89 @@
 //
 //  Main app entry point with manual menu bar integration.
 //  Uses NSApplication delegate pattern for SPM compatibility.
-//
-//  Note: Privileged helper (SMAppService daemon) requires Developer ID signing.
-//  For local development, charge limit writes fall back to osascript with admin prompt.
+//  Registers privileged helper via SMAppService (macOS 13+).
 //
 
 import SwiftUI
 import AppKit
 import ServiceManagement
 import os.log
+
+// MARK: - Helper Manager (SMAppService)
+
+final class HelperManager: ObservableObject {
+    static let shared = HelperManager()
+    
+    private let plistName = "com.denissmoliakov.ChargeLimitHelper.plist"
+    private var daemon: SMAppService?
+    
+    @Published var status: SMAppService.Status = .notRegistered
+    @Published var lastError: String? = nil
+    
+    private init() {
+        if #available(macOS 13.0, *) {
+            daemon = SMAppService.daemon(plistName: plistName)
+            refreshStatus()
+        }
+    }
+    
+    func refreshStatus() {
+        guard #available(macOS 13.0, *), let daemon = daemon else { return }
+        status = daemon.status
+    }
+    
+    func register() async throws {
+        guard #available(macOS 13.0, *), let daemon = daemon else {
+            throw HelperError.notAvailable
+        }
+        
+        do {
+            try daemon.register()
+            os_log(.info, log: OSLog(subsystem: "com.denissmoliakov.chargelimit", category: "HelperManager"), "Helper registered successfully")
+        } catch {
+            os_log(.error, log: OSLog(subsystem: "com.denissmoliakov.chargelimit", category: "HelperManager"), "Helper registration failed: %@", error.localizedDescription)
+            throw error
+        }
+        
+        refreshStatus()
+    }
+    
+    func unregister() async throws {
+        guard #available(macOS 13.0, *), let daemon = daemon else {
+            throw HelperError.notAvailable
+        }
+        
+        do {
+            try await daemon.unregister()
+            os_log(.info, log: OSLog(subsystem: "com.denissmoliakov.chargelimit", category: "HelperManager"), "Helper unregistered successfully")
+        } catch {
+            os_log(.error, log: OSLog(subsystem: "com.denissmoliakov.chargelimit", category: "HelperManager"), "Helper unregistration failed: %@", error.localizedDescription)
+            throw error
+        }
+        
+        refreshStatus()
+    }
+    
+    func openSystemSettings() {
+        if #available(macOS 13.0, *) {
+            SMAppService.openSystemSettingsLoginItems()
+        }
+    }
+    
+    enum HelperError: LocalizedError {
+        case notAvailable
+        case registrationFailed(String)
+        
+        var errorDescription: String? {
+            switch self {
+            case .notAvailable:
+                return "SMAppService not available (requires macOS 13+)"
+            case .registrationFailed(let msg):
+                return "Registration failed: \(msg)"
+            }
+        }
+    }
+}
 
 // MARK: - App Delegate
 
@@ -22,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarWindowController: NSWindowController?
     private var mainWindowController: NSWindowController?
     private var settingsWindowController: NSWindowController?
+    private let helperManager = HelperManager.shared
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Initialize services
@@ -52,7 +127,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         
+        // Register privileged helper on launch
+        Task { @MainActor in
+            await ensureHelperRegistered()
+        }
+        
         // DO NOT create main window at launch - only when user clicks "Открыть"
+    }
+    
+    private func ensureHelperRegistered() async {
+        guard #available(macOS 13.0, *) else { return }
+        
+        helperManager.refreshStatus()
+        
+        switch helperManager.status {
+        case .enabled:
+            os_log(.info, log: OSLog(subsystem: "com.denissmoliakov.chargelimit", category: "AppDelegate"), "Helper already enabled")
+        case .requiresApproval:
+            os_log(.info, log: OSLog(subsystem: "com.denissmoliakov.chargelimit", category: "AppDelegate"), "Helper requires user approval in System Settings")
+        case .notRegistered:
+            os_log(.info, log: OSLog(subsystem: "com.denissmoliakov.chargelimit", category: "AppDelegate"), "Helper not registered, attempting registration...")
+            do {
+                try await helperManager.register()
+            } catch {
+                os_log(.error, log: OSLog(subsystem: "com.denissmoliakov.chargelimit", category: "AppDelegate"), "Helper registration failed: %@", error.localizedDescription)
+                await MainActor.run {
+                    helperManager.lastError = error.localizedDescription
+                }
+            }
+        case .notFound:
+            os_log(.error, log: OSLog(subsystem: "com.denissmoliakov.chargelimit", category: "AppDelegate"), "Helper plist not found in app bundle")
+            await MainActor.run {
+                helperManager.lastError = "Helper configuration not found in app bundle"
+            }
+        @unknown default:
+            break
+        }
+        
+        helperManager.refreshStatus()
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

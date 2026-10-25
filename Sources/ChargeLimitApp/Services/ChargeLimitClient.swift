@@ -8,7 +8,7 @@ import os.log
 // MARK: - XPC Protocol
 
 @objc protocol ChargeLimitXPCProtocol {
-    func setChargeLimit(_ percentage: Int, reply: @escaping (NSNumber?, NSError?) -> Void)
+    func setChargeLimit(_ percentage: Int, enable: Bool, reply: @escaping (NSNumber?, NSError?) -> Void)
     func getChargeLimit(_ reply: @escaping (NSNumber?, NSError?) -> Void)
 }
 
@@ -25,7 +25,7 @@ final class ChargeLimitClient {
     private let callbackQueue = DispatchQueue(label: "com.denissmoliakov.chargelimit.xpc-callbacks", qos: .userInitiated)
     
     // Short timeout for XPC operations - fail fast if helper not available
-    private let xpcTimeout: TimeInterval = 1.5
+    private let xpcTimeout: TimeInterval = 3.0
     
     init() {
         setupConnection()
@@ -50,7 +50,7 @@ final class ChargeLimitClient {
         } as? ChargeLimitXPCProtocol
     }
     
-    func setChargeLimit(_ percentage: Int) async throws {
+    func setChargeLimit(_ percentage: Int, enable: Bool = true) async throws {
         guard let proxy = proxy else {
             throw ChargeLimitError.privilegedOperationFailed("XPC proxy not available")
         }
@@ -61,10 +61,23 @@ final class ChargeLimitClient {
             }
             callbackQueue.asyncAfter(deadline: .now() + xpcTimeout, execute: timeoutTask)
             
-            proxy.setChargeLimit(percentage) { result, error in
+            proxy.setChargeLimit(percentage, enable: enable) { result, error in
                 timeoutTask.cancel()
                 if let error = error {
-                    continuation.resume(throwing: ChargeLimitError.privilegedOperationFailed(error.localizedDescription))
+                    let nsError = error as NSError
+                    // Check for specific error codes from helper
+                    if nsError.domain == "ChargeLimitHelper" {
+                        switch nsError.code {
+                        case -100:
+                            continuation.resume(throwing: ChargeLimitError.helperNotInstalled)
+                        case -101:
+                            continuation.resume(throwing: ChargeLimitError.helperNotAuthorized)
+                        default:
+                            continuation.resume(throwing: ChargeLimitError.privilegedOperationFailed(error.localizedDescription))
+                        }
+                    } else {
+                        continuation.resume(throwing: ChargeLimitError.privilegedOperationFailed(error.localizedDescription))
+                    }
                 } else if let result = result, result.intValue == 1 {
                     continuation.resume()
                 } else {
@@ -88,7 +101,19 @@ final class ChargeLimitClient {
             proxy.getChargeLimit { result, error in
                 timeoutTask.cancel()
                 if let error = error {
-                    continuation.resume(throwing: ChargeLimitError.readFailed(error.localizedDescription))
+                    let nsError = error as NSError
+                    if nsError.domain == "ChargeLimitHelper" {
+                        switch nsError.code {
+                        case -100:
+                            continuation.resume(throwing: ChargeLimitError.helperNotInstalled)
+                        case -101:
+                            continuation.resume(throwing: ChargeLimitError.helperNotAuthorized)
+                        default:
+                            continuation.resume(throwing: ChargeLimitError.readFailed(error.localizedDescription))
+                        }
+                    } else {
+                        continuation.resume(throwing: ChargeLimitError.readFailed(error.localizedDescription))
+                    }
                 } else if let result = result {
                     continuation.resume(returning: result.intValue)
                 } else {
